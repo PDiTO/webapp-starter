@@ -10,12 +10,12 @@ This is a web app starter template using
 
 1. Create a new application in [Clerk](https://dashboard.clerk.com/apps/new)
 2. Create a new project in [Supabase](https://supabase.com/dashboard/new)
-3. Link Clerk to Supabase go [here](https://dashboard.clerk.com/setup/supabase)
+3. Link Clerk to Supabase [here](https://dashboard.clerk.com/setup/supabase)
 4. Clone .sample.env to .env and populate all the required keys.
 
 ## Database setup
 
-run the following command in Supabase SQL Editor:
+Run the following command in Supabase SQL Editor:
 
 ```sql
 create table tasks(
