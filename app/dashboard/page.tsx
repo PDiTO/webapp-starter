@@ -5,7 +5,13 @@ import { createClient } from "@supabase/supabase-js";
 import { Trash2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -32,7 +38,7 @@ export default function Dashboard() {
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       {
         async accessToken() {
-          return await getToken() ?? null;
+          return (await getToken()) ?? null;
         },
       }
     );
@@ -51,7 +57,7 @@ export default function Dashboard() {
       const { data, error } = await client
         .from("tasks")
         .select()
-        .order('created_at', { ascending: false });
+        .order("created_at", { ascending: false });
       if (!error && data) {
         setTasks(data as Task[]);
       }
@@ -59,12 +65,12 @@ export default function Dashboard() {
     }
 
     loadTasks();
-  }, [user]);
+  }, [user, client]);
 
   async function createTask(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!name.trim()) return;
-    
+
     // Insert task into the "tasks" database
     const { data, error } = await client
       .from("tasks")
@@ -74,7 +80,7 @@ export default function Dashboard() {
       })
       .select()
       .single();
-    
+
     if (!error && data) {
       setTasks([data as Task, ...tasks]);
       setName("");
@@ -85,23 +91,22 @@ export default function Dashboard() {
     const { error } = await client
       .from("tasks")
       .update({ completed: !completed })
-      .eq('id', taskId);
-    
+      .eq("id", taskId);
+
     if (!error) {
-      setTasks(tasks.map(task => 
-        task.id === taskId ? { ...task, completed: !completed } : task
-      ));
+      setTasks(
+        tasks.map((task) =>
+          task.id === taskId ? { ...task, completed: !completed } : task
+        )
+      );
     }
   }
 
   async function deleteTask(taskId: string) {
-    const { error } = await client
-      .from("tasks")
-      .delete()
-      .eq('id', taskId);
-    
+    const { error } = await client.from("tasks").delete().eq("id", taskId);
+
     if (!error) {
-      setTasks(tasks.filter(task => task.id !== taskId));
+      setTasks(tasks.filter((task) => task.id !== taskId));
     }
   }
 
@@ -111,7 +116,7 @@ export default function Dashboard() {
         <CardHeader>
           <CardTitle>My Tasks</CardTitle>
           <CardDescription>
-            Welcome back, {user?.firstName || 'there'}! Manage your tasks below.
+            Welcome back, {user?.firstName || "there"}! Manage your tasks below.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -154,11 +159,15 @@ export default function Dashboard() {
                   >
                     <Checkbox
                       checked={task.completed}
-                      onCheckedChange={() => toggleTask(task.id, task.completed)}
+                      onCheckedChange={() =>
+                        toggleTask(task.id, task.completed)
+                      }
                     />
                     <span
                       className={`flex-1 ${
-                        task.completed ? 'line-through text-muted-foreground' : ''
+                        task.completed
+                          ? "line-through text-muted-foreground"
+                          : ""
                       }`}
                     >
                       {task.name}
