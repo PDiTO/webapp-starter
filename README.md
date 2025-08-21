@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+This is a web app starter template using
 
-## Getting Started
+- Next.js
+- Tailwind
+- ShadCn & Lucide
+- Clerk
+- Supabase
 
-First, run the development server:
+## Initial setup
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+1. Create a new application in [Clerk](https://dashboard.clerk.com/apps/new)
+2. Create a new project in [Supabase](https://supabase.com/dashboard/new)
+3. Link Clerk to Supabase go [here](https://dashboard.clerk.com/setup/supabase)
+4. Clone .sample.env to .env and populate all the required keys.
+
+## Database setup
+
+run the following command in Supabase SQL Editor:
+
+```sql
+create table tasks(
+  id serial primary key,
+  name text not null,
+  user_id text not null default auth.jwt()->>'sub'
+);
+
+-- Enable RLS on the table
+alter table "tasks" enable row level security;
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Then create the following policies:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sql
+create policy "User can view their own tasks"
+on "public"."tasks"
+for select
+to authenticated
+using (
+((select auth.jwt()->>'sub') = (user_id)::text)
+);
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+create policy "Users must insert their own tasks"
+on "public"."tasks"
+as permissive
+for insert
+to authenticated
+with check (
+((select auth.jwt()->>'sub') = (user_id)::text)
+);
+```
 
-## Learn More
+## Running the Development Server
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm install
+pnpm run dev
+```
