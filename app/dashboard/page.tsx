@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ErrorToast } from "@/components/ui/error-toast";
 
 interface Task {
   id: string;
@@ -26,6 +27,7 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
+  const [error, setError] = useState<string | null>(null);
 
   const { user } = useUser();
   const { getToken } = useAuth();
@@ -85,44 +87,85 @@ export default function Dashboard() {
     e.preventDefault();
     if (!name.trim()) return;
 
+    const tempId = `temp-${Date.now()}`;
+    const newTask: Task = {
+      id: tempId,
+      name: name.trim(),
+      completed: false,
+      created_at: new Date().toISOString(),
+    };
+
+    // Optimistic update
+    setTasks((prev) => [newTask, ...prev]);
+    setName("");
+
+    // Make API call
     const { data, error } = await client
       .from("tasks")
-      .insert({ name: name.trim(), completed: false })
+      .insert({ name: newTask.name, completed: false })
       .select()
       .single();
 
-    if (!error && data) {
-      setTasks((prev) => [data as Task, ...prev]); // functional update
-      setName("");
+    if (error) {
+      // Rollback on error
+      setTasks((prev) => prev.filter((t) => t.id !== tempId));
+      setName(newTask.name);
+      setError("Failed to create task. Please try again.");
+    } else if (data) {
+      // Replace temp task with real one
+      setTasks((prev) =>
+        prev.map((t) => (t.id === tempId ? (data as Task) : t))
+      );
     }
   }
 
   async function toggleTask(taskId: string, completed: boolean) {
+    // Optimistic update
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, completed: !completed } : t))
+    );
+
+    // Make API call
     const { error } = await client
       .from("tasks")
       .update({ completed: !completed })
       .eq("id", taskId);
 
-    if (!error) {
+    if (error) {
+      // Rollback on error
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, completed: !completed } : t))
+        prev.map((t) => (t.id === taskId ? { ...t, completed } : t))
       );
+      setError("Failed to update task. Please try again.");
     }
   }
 
   async function deleteTask(taskId: string) {
+    // Store task for potential rollback
+    const taskToDelete = tasks.find((t) => t.id === taskId);
+    if (!taskToDelete) return;
+
+    // Optimistic update
+    setTasks((prev) => prev.filter((t) => t.id !== taskId));
+
+    // Make API call
     const { error } = await client.from("tasks").delete().eq("id", taskId);
-    
+
     if (error) {
-      console.error("Failed to delete task:", error);
-      alert(`Failed to delete task: ${error.message}`);
-    } else {
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      // Rollback on error
+      setTasks((prev) => {
+        const newTasks = [...prev];
+        const originalIndex = tasks.findIndex((t) => t.id === taskId);
+        newTasks.splice(originalIndex, 0, taskToDelete);
+        return newTasks;
+      });
+      setError("Failed to delete task. Please try again.");
     }
   }
 
   return (
     <div className="container mx-auto max-w-2xl p-4">
+      {error && <ErrorToast message={error} onClose={() => setError(null)} />}
       <Card>
         <CardHeader>
           <CardTitle>My Tasks</CardTitle>
