@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { useAuth, useUser } from "@clerk/nextjs";
 import { createClient } from "@supabase/supabase-js";
 import { Trash2 } from "lucide-react";
@@ -26,63 +26,73 @@ export default function Dashboard() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState("");
-  // The `useUser()` hook is used to ensure that Clerk has loaded data about the signed in user
+
   const { user } = useUser();
-  // The `useAuth()` hook is used to get authentication state and getToken method
   const { getToken } = useAuth();
 
-  // Create a custom Supabase client that injects the Clerk session token into the request headers
-  function createClerkSupabaseClient() {
+  // Keep the latest getToken in a ref so the client doesn't need to change
+  const getTokenRef = useRef(getToken);
+  useEffect(() => {
+    getTokenRef.current = getToken;
+  }, [getToken]);
+
+  // Create ONE stable Supabase client. It asks Clerk for a fresh token per request.
+  const client = useMemo(() => {
     return createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
       {
-        async accessToken() {
-          return (await getToken()) ?? null;
-        },
+        // If your supabase-js version supports this:
+        accessToken: async () => (await getTokenRef.current?.()) ?? null,
+
+        // If not, alternative approach:
+        // global: {
+        //   fetch: async (url, options) => {
+        //     const token = await getTokenRef.current?.();
+        //     const headers = new Headers(options?.headers);
+        //     if (token) headers.set("Authorization", `Bearer ${token}`);
+        //     return fetch(url, { ...options, headers });
+        //   },
+        // },
       }
     );
-  }
+  }, []); // <-- stable forever
 
-  // Create a `client` object for accessing Supabase data using the Clerk token
-  const client = createClerkSupabaseClient();
-
-  // This `useEffect` will wait for the User object to be loaded before requesting
-  // the tasks for the signed in user
+  // Fetch tasks when the signed-in user changes
   useEffect(() => {
-    if (!user) return;
+    if (!user?.id) return;
+    let cancelled = false;
 
-    async function loadTasks() {
+    (async () => {
       setLoading(true);
       const { data, error } = await client
         .from("tasks")
         .select()
         .order("created_at", { ascending: false });
-      if (!error && data) {
-        setTasks(data as Task[]);
-      }
-      setLoading(false);
-    }
 
-    loadTasks();
-  }, [user, client]);
+      if (!cancelled) {
+        if (!error && data) setTasks(data as Task[]);
+        setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, client]); // client is stable; re-run only when user id changes
 
   async function createTask(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!name.trim()) return;
 
-    // Insert task into the "tasks" database
     const { data, error } = await client
       .from("tasks")
-      .insert({
-        name: name.trim(),
-        completed: false,
-      })
+      .insert({ name: name.trim(), completed: false })
       .select()
       .single();
 
     if (!error && data) {
-      setTasks([data as Task, ...tasks]);
+      setTasks((prev) => [data as Task, ...prev]); // functional update
       setName("");
     }
   }
@@ -94,19 +104,20 @@ export default function Dashboard() {
       .eq("id", taskId);
 
     if (!error) {
-      setTasks(
-        tasks.map((task) =>
-          task.id === taskId ? { ...task, completed: !completed } : task
-        )
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, completed: !completed } : t))
       );
     }
   }
 
   async function deleteTask(taskId: string) {
     const { error } = await client.from("tasks").delete().eq("id", taskId);
-
-    if (!error) {
-      setTasks(tasks.filter((task) => task.id !== taskId));
+    
+    if (error) {
+      console.error("Failed to delete task:", error);
+      alert(`Failed to delete task: ${error.message}`);
+    } else {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
     }
   }
 
