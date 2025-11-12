@@ -2,7 +2,7 @@ This is a full-stack web app starter template with a fully functional task manag
 
 ## Tech Stack
 
-- **Next.js 15** - React framework with App Router
+- **Next.js 16** - React framework with App Router
 - **Tailwind CSS** - Utility-first CSS framework
 - **Shadcn/ui** - Beautiful UI components
 - **Lucide Icons** - Icon library
