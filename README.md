@@ -1,101 +1,125 @@
-This is a full-stack web app starter template with a fully functional task management system.
+This is a full-stack web app starter template with native Convex Auth and a live task list built on Convex queries and mutations.
 
 ## Tech Stack
 
 - **Next.js 16** - React framework with App Router
 - **Tailwind CSS** - Utility-first CSS framework
-- **Shadcn/ui** - Beautiful UI components
+- **Shadcn/ui** - UI components
 - **Lucide Icons** - Icon library
-- **Clerk** - Authentication and user management
-- **Supabase** - PostgreSQL database with Row Level Security
+- **Convex** - Database, backend functions, live queries, and native auth
 
 ## Features
 
-- 🔐 Secure authentication with Clerk
-- ✅ Create, complete, and delete tasks
-- 🎨 Beautiful UI with Shadcn components
-- 🔒 Row Level Security - users can only see their own tasks
-- ⚡ Real-time updates without page refresh
-- 📱 Responsive design
+- Email/password auth with native Convex Auth
+- Create, complete, and delete tasks
+- Live task updates with Convex `useQuery`
+- User-scoped task data enforced in Convex queries and mutations
+- Responsive UI built with Shadcn and Tailwind
 
-## Initial setup
+## Setup
 
-1. Create a new application in [Clerk](https://dashboard.clerk.com/apps/new)
-2. Create a new project in [Supabase](https://supabase.com/dashboard/new)
-3. Link Clerk to Supabase [here](https://dashboard.clerk.com/setup/supabase)
-4. Clone .sample.env to .env and populate all the required keys.
-
-## Database setup
-
-Run the following SQL in your Supabase SQL Editor to create the tasks table with all necessary columns:
-
-```sql
--- Create the tasks table with all required columns
-create table tasks(
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  completed boolean default false,
-  user_id text not null default auth.jwt()->>'sub',
-  created_at timestamp with time zone default now()
-);
-
--- Create indexes for better query performance
-create index idx_tasks_user_id on tasks(user_id);
-create index idx_tasks_created_at on tasks(created_at desc);
-
--- Enable RLS on the table
-alter table "tasks" enable row level security;
-```
-
-Then create the following RLS policies:
-
-```sql
--- Policy: Users can view their own tasks
-create policy "User can view their own tasks"
-on "public"."tasks"
-for select
-to authenticated
-using (
-  ((select auth.jwt()->>'sub') = (user_id)::text)
-);
-
--- Policy: Users can insert their own tasks
-create policy "Users must insert their own tasks"
-on "public"."tasks"
-as permissive
-for insert
-to authenticated
-with check (
-  ((select auth.jwt()->>'sub') = (user_id)::text)
-);
-
--- Policy: Users can update their own tasks
-create policy "Users can update their own tasks"
-on "public"."tasks"
-as permissive
-for update
-to authenticated
-using (
-  ((select auth.jwt()->>'sub') = (user_id)::text)
-)
-with check (
-  ((select auth.jwt()->>'sub') = (user_id)::text)
-);
-
--- Policy: Users can delete their own tasks
-create policy "Users can delete their own tasks"
-on "public"."tasks"
-as permissive
-for delete
-to authenticated
-using (
-  ((select auth.jwt()->>'sub') = (user_id)::text)
-);
-```
-
-## Running the Development Server
+1. Install dependencies:
 
 ```bash
 pnpm install
-pnpm run dev
 ```
+
+2. Link the repo to your existing Convex cloud dev deployment:
+
+```bash
+pnpm convex:dev --configure existing
+```
+
+3. Configure native Convex Auth for your local web URL:
+
+```bash
+npx @convex-dev/auth --web-server-url http://localhost:3000
+```
+
+The URL must match the exact origin used by `pnpm dev`. If you run Next.js on a different port, use that URL instead. For example: `http://localhost:3002`.
+
+4. Start Convex against the cloud dev deployment:
+
+```bash
+pnpm convex:dev
+```
+
+5. In another terminal, start Next.js:
+
+```bash
+pnpm dev
+```
+
+## Environment Variables
+
+You do not need to create `.env` or `.env.local` by hand for local development.
+
+`pnpm convex:dev --configure existing` writes these local values into `.env.local`:
+
+- `CONVEX_DEPLOYMENT`
+- `NEXT_PUBLIC_CONVEX_URL`
+- `NEXT_PUBLIC_CONVEX_SITE_URL`
+
+`npx @convex-dev/auth --web-server-url ...` sets the required auth env vars on your linked Convex deployment:
+
+- `SITE_URL`
+- `JWT_PRIVATE_KEY`
+- `JWKS`
+
+If you delete `.env.local`, rerun:
+
+```bash
+pnpm convex:dev --configure existing
+```
+
+## Deploying
+
+### Dev
+
+Push schema and function changes to the linked Convex cloud dev deployment:
+
+```bash
+pnpm convex:dev --once
+```
+
+If you need to relink the repo:
+
+```bash
+pnpm convex:dev --configure existing
+```
+
+### Prod
+
+1. Configure native Convex Auth on the production deployment:
+
+```bash
+npx @convex-dev/auth --prod --web-server-url https://your-app.example.com
+```
+
+This sets the production Convex auth env vars on the deployment:
+
+- `SITE_URL`
+- `JWT_PRIVATE_KEY`
+- `JWKS`
+
+2. Deploy the Convex backend:
+
+```bash
+pnpm convex:deploy
+```
+
+3. In your frontend host, set `NEXT_PUBLIC_CONVEX_URL` to the production Convex URL from the Convex dashboard.
+4. Deploy the Next.js app.
+
+If your frontend host needs explicit env vars, set:
+
+```bash
+NEXT_PUBLIC_CONVEX_URL=https://your-prod-deployment.convex.cloud
+```
+
+## Notes
+
+- Native Convex Auth is configured in `convex/auth.ts`, `convex/auth.config.ts`, and `convex/http.ts`.
+- Next.js server auth integration lives in `proxy.ts` and `app/layout.tsx`.
+- The task list reads data with `useQuery`, so updates stay live without manual refetching.
+- `@auth/core` is a required package for native Convex Auth.

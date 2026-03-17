@@ -1,15 +1,12 @@
+// app/layout.tsx - Root layout wiring native Convex Auth for Next.js.
+import { ConvexAuthNextjsServerProvider } from "@convex-dev/auth/nextjs/server";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import {
-  ClerkProvider,
-  SignedIn,
-  SignedOut,
-  SignInButton,
-  UserButton,
-} from "@clerk/nextjs";
+
+import { AuthHeader } from "@/components/auth/auth-header";
+import { ConvexClientProvider } from "@/components/providers/convex-client-provider";
 
 import "./globals.css";
-import { Button } from "@/components/ui/button";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,8 +20,22 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Task List Demo",
-  description: "A full-stack task management app with Clerk auth and Supabase",
+  description: "A full-stack task management app with Convex Auth and Convex",
 };
+
+const themeScript = `
+  (() => {
+    const storedTheme = window.localStorage.getItem("theme");
+    const theme =
+      storedTheme === "dark" || storedTheme === "light"
+        ? storedTheme
+        : window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+    document.documentElement.classList.toggle("dark", theme === "dark");
+    document.documentElement.style.colorScheme = theme;
+  })();
+`;
 
 export default function RootLayout({
   children,
@@ -32,24 +43,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider afterSignOutUrl="/">
-      <html lang="en">
-        <body
-          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        >
-          <header className="flex justify-end items-center p-4 gap-4 h-16">
-            <SignedOut>
-              <SignInButton>
-                <Button>Sign In</Button>
-              </SignInButton>
-            </SignedOut>
-            <SignedIn>
-              <UserButton />
-            </SignedIn>
-          </header>
-          {children}
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" suppressHydrationWarning>
+      <body
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+      >
+        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <ConvexAuthNextjsServerProvider>
+          <ConvexClientProvider>
+            <AuthHeader />
+            {children}
+          </ConvexClientProvider>
+        </ConvexAuthNextjsServerProvider>
+      </body>
+    </html>
   );
 }

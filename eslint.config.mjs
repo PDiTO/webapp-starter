@@ -12,6 +12,7 @@ export default [
       ".next/**",
       "out/**",
       "build/**",
+      "convex/_generated/**",
       "next-env.d.ts",
     ],
   },
