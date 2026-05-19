@@ -18,7 +18,7 @@ export default function SignInPage() {
   }, [isAuthenticated, isLoading, router]);
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top,rgba(17,24,39,0.08),transparent_45%),linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)]">
+    <div className="min-h-[calc(100vh-4rem)] bg-[radial-gradient(circle_at_top,rgba(17,24,39,0.08),transparent_45%),linear-gradient(180deg,#f8fafc_0%,#ffffff_100%)] dark:bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.04),transparent_45%),linear-gradient(180deg,#0a0a0a_0%,#111111_100%)]">
       <div className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-6xl items-center justify-center px-4 py-10">
         <AuthForm />
       </div>

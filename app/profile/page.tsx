@@ -25,22 +25,18 @@ export default function ProfilePage() {
   const [error, setError] = useState<string | null>(null);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
-  const [bio, setBio] = useState("");
-  const [name, setName] = useState("");
+  const [bioEdit, setBioEdit] = useState<string | null>(null);
+  const [nameEdit, setNameEdit] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  const bio = bioEdit ?? currentUser?.bio ?? "";
+  const name = nameEdit ?? currentUser?.name ?? "";
 
   useEffect(() => {
     if (!isAuthLoading && !isAuthenticated) {
       router.replace("/");
     }
   }, [isAuthLoading, isAuthenticated, router]);
-
-  useEffect(() => {
-    if (currentUser) {
-      setBio(currentUser.bio ?? "");
-      setName(currentUser.name ?? "");
-    }
-  }, [currentUser]);
 
   async function handleAvatarChange(
     e: React.ChangeEvent<HTMLInputElement>
@@ -156,7 +152,7 @@ export default function ProfilePage() {
             </label>
             <Input
               id="name"
-              onChange={(e) => setName(e.target.value)}
+              onChange={(e) => setNameEdit(e.target.value)}
               placeholder="Your name"
               required
               value={name}
@@ -169,7 +165,7 @@ export default function ProfilePage() {
             </label>
             <Textarea
               id="bio"
-              onChange={(e) => setBio(e.target.value)}
+              onChange={(e) => setBioEdit(e.target.value)}
               placeholder="Tell people a little about yourself"
               rows={4}
               value={bio}
